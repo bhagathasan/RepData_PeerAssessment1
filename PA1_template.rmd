@@ -1,0 +1,125 @@
+#Activity Monitoring Dataset
+###Data consists of number of steps recorded at 5 min interval for a 2 month period
+
+
+```{r}
+setwd("C:\\Users\\Hasan\\Statistics\\R\\rep data activity")
+data=read.csv("activity.csv")
+data$date=as.Date(data$date)
+head(data)
+```
+
+
+**Calculting the total number of steps taken each day**
+```{r message=FALSE ,warning=FALSE}
+library(dplyr)
+sum.day=data %>%
+  group_by(date) %>%
+                summarise(sum=sum(steps,na.rm=TRUE))
+head(sum.day)
+```
+
+
+**Histogram of the total number of steps taken each day**
+```{r}
+breaks=with(sum.day,seq(min(sum),max(sum),length=10))
+with(sum.day,hist(sum,breaks=breaks,xaxt="n",ylim=c(0,20),xlab="sum of steps",
+     main="Histogram of the total number of steps taken each day",col=rgb(0,0,0,0.35)))
+axis(1,at=breaks,labels=ceiling(breaks),las=2,cex.axis=0.75)
+box()
+```
+
+```{r}
+mean.day=mean(sum.day$sum)
+print(mean.day)
+median.day=median(sum.day$sum)
+print(median.day)
+```
+
+**Calculting the average number of steps taken in each interval in 2 months**
+```{r}
+sum.int=data %>%
+  group_by(interval) %>%
+  summarise(mean=mean(steps,na.rm=TRUE))
+head(sum.int)
+```
+**Time series plot of the average number of steps taken in each interval**
+```{r}
+with(sum.int,plot(interval,mean,type="l",
+                  xlab="5 minute intervals",ylab="mean steps per interval",
+                  main="time series plot of the number of steps taken in each interval"))
+```
+
+**The 5 min interval having the maximum number of steps on an average**
+```{r}
+sum.int[which.max(sum.int$mean),"interval"]
+```
+
+**Imputation**
+The impuation of missing values is carried out by taking a random sample from the available data and putting them in place of the missing values
+This incorporates a randomness in the data and provies greated precision
+```{r}
+num.na=sum(is.na(data$steps))
+pos.na=which(is.na(data$steps))
+impute=sample(data$steps[-pos.na],num.na)
+data.imp=data
+data.imp[pos.na,"steps"]=impute
+head(data.imp)
+```
+
+**Calculating the total number of steps taken each day after imputation**
+```{r}
+sum.day.imp=data.imp %>%
+  group_by(date) %>%
+  summarise(sum=sum(steps,na.rm=TRUE))
+head(sum.day.imp)
+```
+**Histogram of total number of steps taken each day before and after imputation**
+```{r}
+par(mfrow=c(1,2),oma=c(0,0,2,0))
+breaks=with(sum.day,seq(min(sum),max(sum),length=10))
+
+with(sum.day,hist(sum,breaks=breaks,freq=TRUE,xaxt="n",ylim=c(0,20),xlab="sum of steps",
+                  main="",col=rgb(0,0.4,0,0.35)))
+axis(1,at=breaks,labels=ceiling(breaks),las=2,cex.axis=0.75)
+mtext("(Before imputation)",side=3)
+box()
+
+with(sum.day.imp,hist(sum,breaks=breaks,freq=TRUE,xaxt="n",ylim=c(0,20),xlab="sum of steps",
+                  main="",col=rgb(0,0,0.2,0.35)))
+axis(1,at=breaks,labels=ceiling(breaks),las=2,cex.axis=0.75)
+mtext("(After imputation)",side=3)
+box()
+title(main="Histogram for the total number of steps taken each day",outer=TRUE)
+```
+
+```{r}
+name=list(c("mean","median"),c("before imputation","after imputation"))
+mean.day.imp=mean(sum.day.imp$sum)
+median.day.imp=median(sum.day.imp$sum)
+matrix(c(mean.day,median.day,mean.day.imp,median.day.imp),2,2,dimnames=name)
+```
+
+**Calculating the average number of steps taken in each interval over weekdays and weekends**
+```{r}
+data.imp$day=weekdays(data.imp$date,abbreviate=TRUE)
+
+pos=with(data.imp,which(day=="Fri" | day=="Sat" | day=="Sun"))
+data.imp$weekfact="weekday"
+data.imp$weekfact[pos]="weekend"
+
+sum.week=data.imp %>%
+  group_by(weekfact,interval) %>%
+  summarise(mean=mean(steps))
+```
+**Panel plot to compare the avg number of steps taken in each interval over weekday and weekend***
+```{r}
+library(lattice)
+color=c(rgb(0,0.4,0,0.55),rgb(0.4,0,0,0.55))
+xyplot(mean~interval | weekfact,data=sum.week,type="l",
+       col=color,groups=weekfact,layout=c(1,2),
+       xlab="5 minute interval",ylab="mean steps per interval",
+       main="Mean steps per interval for weekday and weekend")
+```
+
+There is not much significant difference in the walking over weekdays and weekends
